@@ -1,82 +1,108 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { Session, User } from '@supabase/supabase-js';
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 type UserRole = 'student' | 'admin';
 
-interface User {
+interface UserProfile {
   id: string;
   name: string;
-  email: string;
   role: UserRole;
-  avatar?: string;
+  avatar_url?: string | null;
 }
 
 interface AuthContextType {
   user: User | null;
+  profile: UserProfile | null;
+  session: Session | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signupWithEmail: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
   signInWithProvider: (provider: 'google' | 'microsoft') => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   error: string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock users for demo purposes
-const MOCK_USERS = [
-  {
-    id: '1',
-    name: 'John Student',
-    email: 'student@example.com',
-    password: 'password',
-    role: 'student' as UserRole,
-    avatar: 'https://ui-avatars.com/api/?name=John+Student&background=8B5CF6&color=fff'
-  },
-  {
-    id: '2',
-    name: 'Admin User',
-    email: 'admin@example.com',
-    password: 'password',
-    role: 'admin' as UserRole,
-    avatar: 'https://ui-avatars.com/api/?name=Admin+User&background=6E59A5&color=fff'
-  }
-];
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if user is already logged in
   useEffect(() => {
-    const storedUser = localStorage.getItem('placeme_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
-    setIsLoading(false);
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, currentSession) => {
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        
+        if (currentSession?.user) {
+          // Fetch user profile using setTimeout to avoid deadlock
+          setTimeout(() => {
+            fetchUserProfile(currentSession.user.id);
+          }, 0);
+        } else {
+          setProfile(null);
+        }
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+      
+      if (currentSession?.user) {
+        fetchUserProfile(currentSession.user.id);
+      }
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, name, role, avatar_url')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return;
+      }
+
+      if (data) {
+        setProfile(data as UserProfile);
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
 
   const login = async (email: string, password: string) => {
     setIsLoading(true);
     setError(null);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
       
-      const mockUser = MOCK_USERS.find(u => u.email === email && u.password === password);
+      if (error) throw error;
       
-      if (!mockUser) {
-        throw new Error('Invalid email or password');
-      }
-      
-      const { password: _, ...userWithoutPassword } = mockUser;
-      setUser(userWithoutPassword);
-      localStorage.setItem('placeme_user', JSON.stringify(userWithoutPassword));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      return data;
+    } catch (err: any) {
+      setError(err.message || 'An error occurred during login');
       throw err;
     } finally {
       setIsLoading(false);
@@ -88,26 +114,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Check if user already exists
-      if (MOCK_USERS.some(u => u.email === email)) {
-        throw new Error('User with this email already exists');
-      }
-      
-      const newUser = {
-        id: Math.random().toString(36).substring(2, 9),
-        name,
+      const { data, error } = await supabase.auth.signUp({
         email,
-        role,
-        avatar: `https://ui-avatars.com/api/?name=${name.replace(' ', '+')}&background=8B5CF6&color=fff`
-      };
+        password,
+        options: {
+          data: {
+            name,
+            role
+          }
+        }
+      });
       
-      setUser(newUser);
-      localStorage.setItem('placeme_user', JSON.stringify(newUser));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      if (error) throw error;
+      
+      return data;
+    } catch (err: any) {
+      setError(err.message || 'An error occurred during signup');
       throw err;
     } finally {
       setIsLoading(false);
@@ -119,31 +141,44 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setError(null);
     
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/dashboard`
+        }
+      });
       
-      // In a real implementation, this would redirect to the OAuth provider
-      // For demo, we'll just log in as the student user
-      const mockUser = MOCK_USERS[0];
-      const { password: _, ...userWithoutPassword } = mockUser;
+      if (error) throw error;
       
-      setUser(userWithoutPassword);
-      localStorage.setItem('placeme_user', JSON.stringify(userWithoutPassword));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
-      throw err;
-    } finally {
+      return data;
+    } catch (err: any) {
+      setError(err.message || 'An error occurred during social login');
       setIsLoading(false);
+      throw err;
     }
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('placeme_user');
+  const logout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      setUser(null);
+      setProfile(null);
+      setSession(null);
+    } catch (err: any) {
+      toast({
+        title: "Error signing out",
+        description: err.message,
+        variant: "destructive"
+      });
+    }
   };
 
   const value = {
     user,
+    profile,
+    session,
     isAuthenticated: !!user,
     isLoading,
     login,
