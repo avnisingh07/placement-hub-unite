@@ -20,6 +20,7 @@ import ChatInterface from "./pages/ChatInterface";
 import Settings from "./pages/Settings";
 import ProtectedRoute from "./components/ProtectedRoute";
 
+// Create a new QueryClient instance
 const queryClient = new QueryClient();
 
 const App = () => (
