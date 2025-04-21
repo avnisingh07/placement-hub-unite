@@ -91,7 +91,7 @@ const getTimeLeft = (deadlineDate: string) => {
 };
 
 const StudentDashboard = () => {
-  const { user } = useAuth();
+  const { profile } = useAuth();
   const navigate = useNavigate();
   const [activeIndex, setActiveIndex] = useState(0);
   const [resumeScore, setResumeScore] = useState(65);
@@ -115,15 +115,15 @@ const StudentDashboard = () => {
 
   // Redirect to admin dashboard if user is an admin
   useEffect(() => {
-    if (user?.role === "admin") {
+    if (profile?.role === "admin") {
       navigate("/dashboard/admin");
     }
-  }, [user, navigate]);
+  }, [profile, navigate]);
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold">Welcome back, {user?.name?.split(" ")[0]}</h1>
+        <h1 className="text-3xl font-bold">Welcome back, {profile?.name?.split(" ")[0]}</h1>
         <p className="text-muted-foreground">
           Here's an overview of your placement journey and upcoming opportunities.
         </p>
