@@ -49,7 +49,7 @@ const LoginPage = () => {
     }
   };
 
-  const handleProviderLogin = async (provider: "google" | "microsoft") => {
+  const handleProviderLogin = async (provider: "google") => {
     try {
       setIsLoading(true);
       await signInWithProvider(provider);
@@ -156,7 +156,7 @@ const LoginPage = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <Button 
                 type="button" 
                 variant="outline"
@@ -167,17 +167,6 @@ const LoginPage = () => {
                   <circle cx="12" cy="12" r="10"></circle>
                   <path d="M8 12h8M12 8v8"></path>
                 </svg> Google
-              </Button>
-              <Button 
-                type="button" 
-                variant="outline"
-                onClick={() => handleProviderLogin("microsoft")}
-                disabled={isLoading}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
-                  <rect x="2" y="2" width="20" height="20" rx="2" ry="2"></rect>
-                  <rect x="7" y="7" width="10" height="10"></rect>
-                </svg> Microsoft
               </Button>
             </div>
           </CardContent>

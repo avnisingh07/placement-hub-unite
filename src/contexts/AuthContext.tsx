@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from "@/integrations/supabase/client";
@@ -13,8 +12,8 @@ interface UserProfile {
   avatar_url?: string | null;
 }
 
-// Extend signInWithProvider providers to both "google" and "microsoft"
-type OAuthProvider = 'google' | 'microsoft';
+// Define OAuth providers that match Supabase's supported providers
+type OAuthProvider = 'google';
 
 interface AuthContextType {
   user: User | null;

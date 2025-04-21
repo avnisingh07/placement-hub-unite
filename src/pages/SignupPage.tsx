@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -48,7 +47,7 @@ const SignupPage = () => {
     }
   };
 
-  const handleProviderSignup = async (provider: "google" | "microsoft") => {
+  const handleProviderSignup = async (provider: "google") => {
     try {
       setIsLoading(true);
       await signInWithProvider(provider);
@@ -166,7 +165,7 @@ const SignupPage = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 <Button 
                   type="button" 
                   variant="outline"
@@ -177,17 +176,6 @@ const SignupPage = () => {
                     <circle cx="12" cy="12" r="10"></circle>
                     <path d="M8 12h8M12 8v8"></path>
                   </svg> Google
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline"
-                  onClick={() => handleProviderSignup("microsoft")}
-                  disabled={isLoading}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
-                    <rect x="2" y="2" width="20" height="20" rx="2" ry="2"></rect>
-                    <rect x="7" y="7" width="10" height="10"></rect>
-                  </svg> Microsoft
                 </Button>
               </div>
             </CardContent>
@@ -203,7 +191,6 @@ const SignupPage = () => {
         </div>
       </div>
 
-      {/* Welcome Modal */}
       <Dialog open={showWelcomeModal} onOpenChange={setShowWelcomeModal}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
