@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,35 +12,36 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Slider } from "@/components/ui/slider";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { BellOff, Mail, Calendar, Lock, User, LogOut, Settings as SettingsIcon, Sun, Moon } from "lucide-react";
+import { BellOff, Mail, Calendar, Lock, User, LogOut, Settings as SettingsIcon, Sun, Moon, MessageSquare } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 const Settings = () => {
-  const { user, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
   const { toast } = useToast();
-  
-  // Profile settings
-  const [name, setName] = useState(user?.name || "");
+
+  // Profile settings (defaults to profile from Auth)
+  const [name, setName] = useState(profile?.name || "");
   const [email, setEmail] = useState(user?.email || "");
   const [phone, setPhone] = useState("(123) 456-7890");
   const [location, setLocation] = useState("New York, NY");
   const [bio, setBio] = useState("");
-  
+
   // Password settings
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  
+
   // Notification settings
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [smsNotifications, setSmsNotifications] = useState(false);
   const [appNotifications, setAppNotifications] = useState(true);
   const [emailDigest, setEmailDigest] = useState("daily");
-  
+
   // Accessibility settings
   const [theme, setTheme] = useState("light");
   const [fontSize, setFontSize] = useState(16);
   const [highContrast, setHighContrast] = useState(false);
-  
+
   // Save profile
   const saveProfile = () => {
     toast({
@@ -49,7 +49,7 @@ const Settings = () => {
       description: "Your profile information has been updated successfully."
     });
   };
-  
+
   // Change password
   const changePassword = () => {
     if (!currentPassword || !newPassword || !confirmPassword) {
@@ -60,7 +60,7 @@ const Settings = () => {
       });
       return;
     }
-    
+
     if (newPassword !== confirmPassword) {
       toast({
         variant: "destructive",
@@ -69,17 +69,17 @@ const Settings = () => {
       });
       return;
     }
-    
+
     toast({
       title: "Password updated",
       description: "Your password has been changed successfully."
     });
-    
+
     setCurrentPassword("");
     setNewPassword("");
     setConfirmPassword("");
   };
-  
+
   // Handle logout
   const handleLogout = () => {
     logout();
@@ -96,7 +96,7 @@ const Settings = () => {
           </p>
         </div>
       </div>
-      
+
       <Tabs defaultValue="profile" className="space-y-4">
         <TabsList>
           <TabsTrigger value="profile" className="flex items-center gap-2">
@@ -116,7 +116,7 @@ const Settings = () => {
             <span>Accessibility</span>
           </TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="profile">
           <Card>
             <CardHeader>
@@ -129,8 +129,10 @@ const Settings = () => {
               <div className="flex flex-col md:flex-row gap-8">
                 <div className="flex flex-col items-center gap-4">
                   <Avatar className="h-32 w-32">
-                    <AvatarImage src={user?.avatar} alt={user?.name} />
-                    <AvatarFallback className="text-3xl">{name.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={profile?.avatar_url || ""} alt={name} />
+                    <AvatarFallback className="text-3xl">
+                      {name ? name.charAt(0) : "?"}
+                    </AvatarFallback>
                   </Avatar>
                   <Button variant="outline" size="sm">
                     Change Avatar
@@ -139,73 +141,74 @@ const Settings = () => {
                     JPG, GIF or PNG. 1MB max.
                   </div>
                 </div>
-                
+
                 <div className="flex-1 space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="full-name">Full Name</Label>
-                      <Input 
-                        id="full-name" 
-                        placeholder="Full Name" 
-                        value={name} 
-                        onChange={(e) => setName(e.target.value)} 
+                      <Input
+                        id="full-name"
+                        placeholder="Full Name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="email">Email</Label>
-                      <Input 
-                        id="email" 
-                        type="email" 
-                        placeholder="Email" 
-                        value={email} 
-                        onChange={(e) => setEmail(e.target.value)} 
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="Email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        disabled
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="phone">Phone Number</Label>
-                      <Input 
-                        id="phone" 
-                        placeholder="Phone Number" 
-                        value={phone} 
-                        onChange={(e) => setPhone(e.target.value)} 
+                      <Input
+                        id="phone"
+                        placeholder="Phone Number"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
                       />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="location">Location</Label>
-                      <Input 
-                        id="location" 
-                        placeholder="Location" 
-                        value={location} 
-                        onChange={(e) => setLocation(e.target.value)} 
+                      <Input
+                        id="location"
+                        placeholder="Location"
+                        value={location}
+                        onChange={(e) => setLocation(e.target.value)}
                       />
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label htmlFor="bio">Bio</Label>
-                    <textarea 
-                      id="bio" 
+                    <textarea
+                      id="bio"
                       className="w-full min-h-[100px] p-2 border rounded-md"
                       placeholder="Tell us a bit about yourself..."
                       value={bio}
                       onChange={(e) => setBio(e.target.value)}
                     />
                   </div>
-                  
+
                   <Separator />
-                  
+
                   <div className="space-y-2">
                     <h3 className="font-medium">Account Type</h3>
                     <p className="text-sm text-muted-foreground">
                       You are currently logged in as:
                       <Badge className="ml-2 bg-purple-100 text-purple-800 hover:bg-purple-100">
-                        {user?.role === "admin" ? "Administrator" : "Student"}
+                        {profile?.role === "admin" ? "Administrator" : "Student"}
                       </Badge>
                     </p>
                   </div>
                 </div>
               </div>
-              
+
               <div className="flex justify-end space-x-4">
                 <Button variant="outline">Cancel</Button>
                 <Button onClick={saveProfile}>Save Changes</Button>
@@ -213,7 +216,7 @@ const Settings = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="password">
           <Card>
             <CardHeader>
@@ -226,36 +229,36 @@ const Settings = () => {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="current-password">Current Password</Label>
-                  <Input 
-                    id="current-password" 
-                    type="password" 
-                    placeholder="Enter your current password" 
+                  <Input
+                    id="current-password"
+                    type="password"
+                    placeholder="Enter your current password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="new-password">New Password</Label>
-                  <Input 
-                    id="new-password" 
-                    type="password" 
-                    placeholder="Enter your new password" 
+                  <Input
+                    id="new-password"
+                    type="password"
+                    placeholder="Enter your new password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="confirm-password">Confirm New Password</Label>
-                  <Input 
-                    id="confirm-password" 
-                    type="password" 
-                    placeholder="Confirm your new password" 
+                  <Input
+                    id="confirm-password"
+                    type="password"
+                    placeholder="Confirm your new password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />
                 </div>
               </div>
-              
+
               <div className="bg-gray-50 p-4 rounded-md">
                 <h4 className="font-medium mb-2">Password Requirements</h4>
                 <ul className="text-sm space-y-1 text-muted-foreground">
@@ -285,7 +288,7 @@ const Settings = () => {
                   </li>
                 </ul>
               </div>
-              
+
               <div className="flex justify-end space-x-4">
                 <Button variant="outline">Cancel</Button>
                 <Button onClick={changePassword}>Update Password</Button>
@@ -293,7 +296,7 @@ const Settings = () => {
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="notifications">
           <Card>
             <CardHeader>
@@ -311,14 +314,14 @@ const Settings = () => {
                       Receive notifications via email
                     </p>
                   </div>
-                  <Switch 
-                    checked={emailNotifications} 
-                    onCheckedChange={setEmailNotifications} 
+                  <Switch
+                    checked={emailNotifications}
+                    onCheckedChange={setEmailNotifications}
                   />
                 </div>
-                
+
                 <Separator />
-                
+
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>SMS Notifications</Label>
@@ -326,14 +329,14 @@ const Settings = () => {
                       Receive notifications via text message
                     </p>
                   </div>
-                  <Switch 
-                    checked={smsNotifications} 
-                    onCheckedChange={setSmsNotifications} 
+                  <Switch
+                    checked={smsNotifications}
+                    onCheckedChange={setSmsNotifications}
                   />
                 </div>
-                
+
                 <Separator />
-                
+
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>In-App Notifications</Label>
@@ -341,13 +344,13 @@ const Settings = () => {
                       Receive notifications within the application
                     </p>
                   </div>
-                  <Switch 
-                    checked={appNotifications} 
-                    onCheckedChange={setAppNotifications} 
+                  <Switch
+                    checked={appNotifications}
+                    onCheckedChange={setAppNotifications}
                   />
                 </div>
               </div>
-              
+
               <div className="space-y-4 pt-4">
                 <h3 className="font-medium">Notification Types</h3>
                 <div className="space-y-4">
@@ -358,7 +361,7 @@ const Settings = () => {
                     </div>
                     <Switch defaultChecked />
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <Calendar size={20} className="text-green-600" />
@@ -366,7 +369,7 @@ const Settings = () => {
                     </div>
                     <Switch defaultChecked />
                   </div>
-                  
+
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
                       <MessageSquare size={20} className="text-purple-600" />
@@ -376,7 +379,7 @@ const Settings = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="space-y-4 pt-4">
                 <div className="space-y-2">
                   <Label htmlFor="email-digest">Email Digest Frequency</Label>
@@ -392,14 +395,14 @@ const Settings = () => {
                   </Select>
                 </div>
               </div>
-              
+
               <div className="flex justify-end">
                 <Button>Save Preferences</Button>
               </div>
             </CardContent>
           </Card>
         </TabsContent>
-        
+
         <TabsContent value="accessibility">
           <Card>
             <CardHeader>
@@ -433,9 +436,9 @@ const Settings = () => {
                     </div>
                   </RadioGroup>
                 </div>
-                
+
                 <Separator />
-                
+
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label htmlFor="font-size">Font Size: {fontSize}px</Label>
@@ -457,9 +460,9 @@ const Settings = () => {
                     <span className="text-base">A</span>
                   </div>
                 </div>
-                
+
                 <Separator />
-                
+
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label htmlFor="high-contrast">High Contrast</Label>
@@ -467,15 +470,15 @@ const Settings = () => {
                       Increase contrast for better readability
                     </p>
                   </div>
-                  <Switch 
+                  <Switch
                     id="high-contrast"
-                    checked={highContrast} 
-                    onCheckedChange={setHighContrast} 
+                    checked={highContrast}
+                    onCheckedChange={setHighContrast}
                   />
                 </div>
-                
+
                 <Separator />
-                
+
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label htmlFor="reduced-motion">Reduce Motion</Label>
@@ -486,7 +489,7 @@ const Settings = () => {
                   <Switch id="reduced-motion" />
                 </div>
               </div>
-              
+
               <div className="flex justify-end">
                 <Button>Save Settings</Button>
               </div>
@@ -494,7 +497,7 @@ const Settings = () => {
           </Card>
         </TabsContent>
       </Tabs>
-      
+
       <Card className="border-red-200">
         <CardHeader>
           <CardTitle className="text-red-600">Danger Zone</CardTitle>
@@ -514,9 +517,9 @@ const Settings = () => {
               Log Out Everywhere
             </Button>
           </div>
-          
+
           <Separator className="my-4" />
-          
+
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
             <div>
               <h3 className="font-medium">Log out</h3>
@@ -524,8 +527,8 @@ const Settings = () => {
                 End your current session
               </p>
             </div>
-            <Button 
-              variant="destructive" 
+            <Button
+              variant="destructive"
               className="shrink-0"
               onClick={handleLogout}
             >
@@ -538,9 +541,5 @@ const Settings = () => {
     </div>
   );
 };
-
-// Import missing components
-import { Badge } from "@/components/ui/badge";
-import { MessageSquare } from "lucide-react";
 
 export default Settings;

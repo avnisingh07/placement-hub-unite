@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from "@/integrations/supabase/client";
@@ -21,7 +20,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signupWithEmail: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
-  signInWithProvider: (provider: 'google' | 'microsoft') => Promise<void>;
+  signInWithProvider: (provider: 'google') => Promise<void>;
   logout: () => Promise<void>;
   error: string | null;
 }
@@ -36,14 +35,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         
         if (currentSession?.user) {
-          // Fetch user profile using setTimeout to avoid deadlock
           setTimeout(() => {
             fetchUserProfile(currentSession.user.id);
           }, 0);
@@ -53,7 +50,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
@@ -132,7 +128,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signInWithProvider = async (provider: 'google' | 'microsoft') => {
+  const signInWithProvider = async (provider: 'google') => {
     setIsLoading(true);
     setError(null);
     

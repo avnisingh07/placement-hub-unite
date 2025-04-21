@@ -61,6 +61,47 @@ export type Database = {
           },
         ]
       }
+      jobs: {
+        Row: {
+          company: string
+          created_at: string
+          created_by: string | null
+          deadline: string | null
+          description: string | null
+          id: string
+          skills: string[] | null
+          title: string
+        }
+        Insert: {
+          company: string
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          skills?: string[] | null
+          title: string
+        }
+        Update: {
+          company?: string
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          description?: string | null
+          id?: string
+          skills?: string[] | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "jobs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -102,6 +143,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          read_by: string[] | null
+          receivers: string[] | null
+          title: string
+          type: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          read_by?: string[] | null
+          receivers?: string[] | null
+          title: string
+          type: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          read_by?: string[] | null
+          receivers?: string[] | null
+          title?: string
+          type?: string
+        }
+        Relationships: []
       }
       opportunities: {
         Row: {
@@ -173,6 +244,44 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      reminders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          due_date: string
+          id: string
+          message: string
+          target: string[] | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          due_date: string
+          id?: string
+          message: string
+          target?: string[] | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          due_date?: string
+          id?: string
+          message?: string
+          target?: string[] | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reminders_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       resumes: {
         Row: {
