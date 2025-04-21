@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from "@/integrations/supabase/client";
@@ -12,6 +13,9 @@ interface UserProfile {
   avatar_url?: string | null;
 }
 
+// Extend signInWithProvider providers to both "google" and "microsoft"
+type OAuthProvider = 'google' | 'microsoft';
+
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
@@ -20,7 +24,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signupWithEmail: (email: string, password: string, name: string, role: UserRole) => Promise<void>;
-  signInWithProvider: (provider: 'google') => Promise<void>;
+  signInWithProvider: (provider: OAuthProvider) => Promise<void>;
   logout: () => Promise<void>;
   error: string | null;
 }
@@ -128,13 +132,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signInWithProvider = async (provider: 'google') => {
+  const signInWithProvider = async (provider: OAuthProvider) => {
     setIsLoading(true);
     setError(null);
     
     try {
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: provider,
+        provider,
         options: {
           redirectTo: `${window.location.origin}/dashboard`
         }
