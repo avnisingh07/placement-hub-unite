@@ -213,7 +213,9 @@ const ChatInterface = () => {
     
     if (chatType === "dm") {
       const parts = selectedChat.split("_");
-      const otherUserId = Number(parts[2]) === (user?.id || 0) ? Number(parts[1]) : Number(parts[2]);
+      // Ensure we're using number comparisons
+      const userId = typeof user?.id === 'string' ? parseInt(user.id, 10) : (user?.id || 0);
+      const otherUserId = Number(parts[2]) === userId ? Number(parts[1]) : Number(parts[2]);
       const otherUser = users.find(u => u.id === otherUserId);
       
       return {
@@ -284,9 +286,12 @@ const ChatInterface = () => {
   
   // Create a new DM chat
   const startDMChat = (userId: number) => {
-    const dmId = (user?.id || 0) < userId 
-      ? `dm_${user?.id}_${userId}` 
-      : `dm_${userId}_${user?.id}`;
+    // Ensure user.id is properly converted to a number for comparison
+    const userIdNumber = typeof user?.id === 'string' ? parseInt(user.id, 10) : (user?.id || 0);
+    
+    const dmId = userIdNumber < userId 
+      ? `dm_${userIdNumber}_${userId}` 
+      : `dm_${userId}_${userIdNumber}`;
     
     if (!messages[dmId]) {
       setMessages({
@@ -303,11 +308,17 @@ const ChatInterface = () => {
   const createChannel = () => {
     if (!newChannelName.trim()) return;
     
+    // Find the max channel ID and create a new one with ID + 1
+    const maxId = Math.max(...channels.map(c => c.id));
+    const newId = maxId + 1;
+    
+    const userIdNumber = typeof user?.id === 'string' ? parseInt(user.id, 10) : (user?.id || 0);
+    
     const newChannel = {
-      id: Math.max(...channels.map(c => c.id)) + 1,
+      id: newId,
       name: newChannelName.trim(),
       description: newChannelDescription.trim(),
-      members: [user?.id as number],
+      members: [userIdNumber],
       isUnread: false,
       lastActivity: new Date().toISOString()
     };
@@ -326,10 +337,11 @@ const ChatInterface = () => {
   };
   
   // Filter chats and channels by search term
-  const filteredUsers = users.filter(u => 
-    u.id !== user?.id && 
-    u.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredUsers = users.filter(u => {
+    // Ensure user.id is properly converted to a number for comparison
+    const userIdNumber = typeof user?.id === 'string' ? parseInt(user.id, 10) : (user?.id || 0);
+    return u.id !== userIdNumber && u.name.toLowerCase().includes(searchTerm.toLowerCase());
+  });
   
   const filteredChannels = channels.filter(channel => 
     channel.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -413,13 +425,16 @@ const ChatInterface = () => {
                 <ScrollArea className="flex-1">
                   <div className="p-3 space-y-1">
                     {sortedUsers.map(u => {
-                      const dmId = (user?.id || 0) < u.id 
-                        ? `dm_${user?.id}_${u.id}` 
-                        : `dm_${u.id}_${user?.id}`;
+                      // Ensure user.id is properly converted to a number for comparison
+                      const userIdNumber = typeof user?.id === 'string' ? parseInt(user.id, 10) : (user?.id || 0);
+                      
+                      const dmId = userIdNumber < u.id 
+                        ? `dm_${userIdNumber}_${u.id}` 
+                        : `dm_${u.id}_${userIdNumber}`;
                       
                       const chat = messages[dmId];
                       const lastMessage = chat && chat.length > 0 ? chat[chat.length - 1] : null;
-                      const hasUnread = chat ? chat.some(msg => !msg.isRead && msg.senderId !== user?.id) : false;
+                      const hasUnread = chat ? chat.some(msg => !msg.isRead && msg.senderId !== userIdNumber) : false;
                       
                       return (
                         <div
