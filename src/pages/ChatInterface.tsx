@@ -8,8 +8,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext";
-import { Search, Send, User, Users, Plus, Filter, ChevronDown, ChevronUp, Menu, PenSquare } from "lucide-react";
+import { Search, Send, User, Users, Plus, Filter, ChevronDown, ChevronUp, Menu, PenSquare, MessageSquare } from "lucide-react";
 
 // Mock users
 const usersData = [
@@ -212,7 +213,7 @@ const ChatInterface = () => {
     
     if (chatType === "dm") {
       const parts = selectedChat.split("_");
-      const otherUserId = Number(parts[2]) === user?.id ? Number(parts[1]) : Number(parts[2]);
+      const otherUserId = Number(parts[2]) === (user?.id || 0) ? Number(parts[1]) : Number(parts[2]);
       const otherUser = users.find(u => u.id === otherUserId);
       
       return {
@@ -283,7 +284,7 @@ const ChatInterface = () => {
   
   // Create a new DM chat
   const startDMChat = (userId: number) => {
-    const dmId = user?.id < userId 
+    const dmId = (user?.id || 0) < userId 
       ? `dm_${user?.id}_${userId}` 
       : `dm_${userId}_${user?.id}`;
     
@@ -412,7 +413,7 @@ const ChatInterface = () => {
                 <ScrollArea className="flex-1">
                   <div className="p-3 space-y-1">
                     {sortedUsers.map(u => {
-                      const dmId = user?.id < u.id 
+                      const dmId = (user?.id || 0) < u.id 
                         ? `dm_${user?.id}_${u.id}` 
                         : `dm_${u.id}_${user?.id}`;
                       
