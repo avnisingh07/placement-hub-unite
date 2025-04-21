@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
+import { FcGoogle } from "react-icons/fc";
 
 const LoginPage = () => {
   const { login, signInWithProvider } = useAuth();
@@ -53,18 +55,13 @@ const LoginPage = () => {
     try {
       setIsLoading(true);
       await signInWithProvider(provider);
-      toast({
-        title: "Success",
-        description: `Successfully logged in with ${provider.charAt(0).toUpperCase() + provider.slice(1)}`
-      });
-      navigate("/dashboard");
+      // Note: The redirect happens in the AuthContext, so no need to navigate here
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Login Failed",
         description: error instanceof Error ? error.message : "An error occurred"
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -162,11 +159,10 @@ const LoginPage = () => {
                 variant="outline"
                 onClick={() => handleProviderLogin("google")}
                 disabled={isLoading}
+                className="flex items-center justify-center"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M8 12h8M12 8v8"></path>
-                </svg> Google
+                <FcGoogle className="mr-2 h-4 w-4" />
+                Google
               </Button>
             </div>
           </CardContent>

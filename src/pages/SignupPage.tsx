@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { FcGoogle } from "react-icons/fc";
 
 const SignupPage = () => {
   const { signupWithEmail, signInWithProvider } = useAuth();
@@ -51,7 +53,7 @@ const SignupPage = () => {
     try {
       setIsLoading(true);
       await signInWithProvider(provider);
-      setShowWelcomeModal(true);
+      // No need to set welcome modal as the redirect happens in the auth context
     } catch (error) {
       toast({
         variant: "destructive",
@@ -171,11 +173,10 @@ const SignupPage = () => {
                   variant="outline"
                   onClick={() => handleProviderSignup("google")}
                   disabled={isLoading}
+                  className="flex items-center justify-center"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-2">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <path d="M8 12h8M12 8v8"></path>
-                  </svg> Google
+                  <FcGoogle className="mr-2 h-4 w-4" />
+                  Google
                 </Button>
               </div>
             </CardContent>
