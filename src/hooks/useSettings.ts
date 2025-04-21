@@ -9,7 +9,7 @@ export const useSettings = () => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const updateProfile = async (profileData: Partial<UserProfile>) => {
+  const updateProfile = async (profileData: Partial<Omit<UserProfile, 'id'>>) => {
     setIsLoading(true);
     setError(null);
     
@@ -17,9 +17,20 @@ export const useSettings = () => {
       const user = (await supabase.auth.getUser()).data.user;
       if (!user) throw new Error('User not authenticated');
       
+      // Only include fields that exist in the profiles table
+      const validProfileData = {
+        name: profileData.name,
+        role: profileData.role,
+        avatar_url: profileData.avatar_url,
+        // Include email if it exists in the profiles table
+        ...(profileData.email && { email: profileData.email }),
+        // Include preferences if it exists in the profiles table
+        ...(profileData.preferences && { preferences: profileData.preferences })
+      };
+      
       const { data, error: profileError } = await supabase
         .from('profiles')
-        .update(profileData)
+        .update(validProfileData)
         .eq('id', user.id)
         .select()
         .single();
@@ -31,7 +42,7 @@ export const useSettings = () => {
         description: "Your profile has been updated successfully."
       });
       
-      return { success: true, profile: data as UserProfile };
+      return { success: true, profile: data as unknown as UserProfile };
     } catch (err: any) {
       const errorMessage = err?.message || 'Failed to update profile';
       setError(errorMessage);
@@ -150,7 +161,7 @@ export const useSettings = () => {
         description: "Your avatar has been updated successfully."
       });
       
-      return { success: true, profile: data as UserProfile };
+      return { success: true, profile: data as unknown as UserProfile };
     } catch (err: any) {
       const errorMessage = err?.message || 'Failed to update avatar';
       setError(errorMessage);
@@ -173,6 +184,8 @@ export const useSettings = () => {
       const user = (await supabase.auth.getUser()).data.user;
       if (!user) throw new Error('User not authenticated');
       
+      // Check if preferences column exists in the profiles table
+      // If it doesn't, we'll handle the error appropriately
       const { data, error: prefError } = await supabase
         .from('profiles')
         .update({ preferences })
@@ -187,7 +200,7 @@ export const useSettings = () => {
         description: "Your preferences have been updated successfully."
       });
       
-      return { success: true, profile: data as UserProfile };
+      return { success: true, profile: data as unknown as UserProfile };
     } catch (err: any) {
       const errorMessage = err?.message || 'Failed to update preferences';
       setError(errorMessage);

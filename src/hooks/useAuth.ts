@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -10,7 +9,7 @@ export interface UserProfile {
   id: string;
   name: string;
   role: UserRole;
-  email: string;
+  email?: string; // Make email optional to match database schema
   avatar_url?: string | null;
   preferences?: Record<string, any> | null;
 }

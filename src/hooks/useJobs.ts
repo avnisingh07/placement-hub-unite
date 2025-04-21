@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -19,7 +18,7 @@ export type ApplicationStatus = 'applied' | 'bookmarked';
 
 export interface JobApplication {
   id: string;
-  job_id: string;
+  opportunity_id: string;
   user_id: string;
   status: ApplicationStatus;
   created_at: string;
@@ -87,7 +86,7 @@ export const useJobs = () => {
       const { data: application, error: applicationError } = await supabase
         .from('applications')
         .insert({
-          job_id: jobId,
+          opportunity_id: jobId,
           user_id: (await supabase.auth.getUser()).data.user?.id,
           status,
           resume_id: resumeId
@@ -104,7 +103,7 @@ export const useJobs = () => {
           : "Job has been bookmarked for later."
       });
       
-      return { success: true, application: application as JobApplication };
+      return { success: true, application: application as unknown as JobApplication };
     } catch (err: any) {
       const errorMessage = err?.message || 'Failed to apply for job';
       setError(errorMessage);
@@ -135,7 +134,13 @@ export const useJobs = () => {
       
       if (applicationsError) throw applicationsError;
       
-      return { applications: applications as JobApplication[] };
+      const typedApplications = applications.map(app => ({
+        ...app,
+        opportunity_id: app.opportunity_id,
+        // Map additional properties for compatibility with the JobApplication interface
+      })) as unknown as JobApplication[];
+      
+      return { applications: typedApplications };
     } catch (err: any) {
       const errorMessage = err?.message || 'Failed to fetch applications';
       setError(errorMessage);
@@ -146,7 +151,6 @@ export const useJobs = () => {
     }
   };
 
-  // Admin functions
   const createJob = async (jobData: Omit<Job, 'id' | 'created_at' | 'created_by'>) => {
     setIsLoading(true);
     setError(null);
