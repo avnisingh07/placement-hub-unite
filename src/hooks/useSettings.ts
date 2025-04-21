@@ -21,11 +21,8 @@ export const useSettings = () => {
       const validProfileData = {
         name: profileData.name,
         role: profileData.role,
-        avatar_url: profileData.avatar_url,
-        // Include email if it exists in the profiles table
-        ...(profileData.email && { email: profileData.email }),
-        // Include preferences if it exists in the profiles table
-        ...(profileData.preferences && { preferences: profileData.preferences })
+        avatar_url: profileData.avatar_url
+        // Note: removed preferences as it doesn't exist in the profiles table
       };
       
       const { data, error: profileError } = await supabase
@@ -42,7 +39,13 @@ export const useSettings = () => {
         description: "Your profile has been updated successfully."
       });
       
-      return { success: true, profile: data as unknown as UserProfile };
+      return { 
+        success: true, 
+        profile: { 
+          ...data, 
+          email: user.email 
+        } as UserProfile 
+      };
     } catch (err: any) {
       const errorMessage = err?.message || 'Failed to update profile';
       setError(errorMessage);
@@ -105,15 +108,6 @@ export const useSettings = () => {
       });
       
       return { success: true };
-    } catch (err: any) {
-      const errorMessage = err?.message || 'Failed to update email';
-      setError(errorMessage);
-      toast({
-        variant: "destructive",
-        title: "Update Failed",
-        description: errorMessage
-      });
-      return { success: false, error: errorMessage };
     } finally {
       setIsLoading(false);
     }
@@ -161,7 +155,13 @@ export const useSettings = () => {
         description: "Your avatar has been updated successfully."
       });
       
-      return { success: true, profile: data as unknown as UserProfile };
+      return { 
+        success: true, 
+        profile: { 
+          ...data, 
+          email: user.email 
+        } as UserProfile 
+      };
     } catch (err: any) {
       const errorMessage = err?.message || 'Failed to update avatar';
       setError(errorMessage);
@@ -176,51 +176,16 @@ export const useSettings = () => {
     }
   };
 
-  const updatePreferences = async (preferences: Record<string, any>) => {
-    setIsLoading(true);
-    setError(null);
-    
-    try {
-      const user = (await supabase.auth.getUser()).data.user;
-      if (!user) throw new Error('User not authenticated');
-      
-      // Check if preferences column exists in the profiles table
-      // If it doesn't, we'll handle the error appropriately
-      const { data, error: prefError } = await supabase
-        .from('profiles')
-        .update({ preferences })
-        .eq('id', user.id)
-        .select()
-        .single();
-      
-      if (prefError) throw prefError;
-      
-      toast({
-        title: "Preferences Updated",
-        description: "Your preferences have been updated successfully."
-      });
-      
-      return { success: true, profile: data as unknown as UserProfile };
-    } catch (err: any) {
-      const errorMessage = err?.message || 'Failed to update preferences';
-      setError(errorMessage);
-      toast({
-        variant: "destructive",
-        title: "Update Failed",
-        description: errorMessage
-      });
-      return { success: false, error: errorMessage };
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // Since preferences doesn't exist in our table, we've removed updatePreferences method
+  // If you need to store user preferences in the future, you would need to:
+  // 1. Add a preferences column to the profiles table (via SQL migration)
+  // 2. Re-add this method after the column exists
   
   return {
     updateProfile,
     updatePassword,
     updateEmail,
     updateAvatar,
-    updatePreferences,
     isLoading,
     error
   };

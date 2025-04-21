@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -147,17 +148,21 @@ export const useAuth = () => {
         return { user: null, profile: null };
       }
       
-      const { data: profile, error: profileError } = await supabase
+      const { data, error: profileError } = await supabase
         .from('profiles')
-        .select('id, name, role, avatar_url, email, preferences')
+        .select('id, name, role, avatar_url')
         .eq('id', user.id)
         .single();
       
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Error fetching profile:', profileError);
+        return { user, profile: null };
+      }
       
+      // Safe type assertion since we've checked for errors
       return { 
         user, 
-        profile: profile as UserProfile
+        profile: data as UserProfile
       };
     } catch (err: any) {
       const errorMessage = err?.message || 'Failed to get current user';
