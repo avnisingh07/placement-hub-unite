@@ -79,7 +79,6 @@ const ResumeManager = () => {
       
       if (error) throw new Error(error);
       
-      // Add resume record to database
       await updateResumeData(data.id, {
         title: resumeTitle || file.name,
         file_path: data.path,
@@ -93,7 +92,6 @@ const ResumeManager = () => {
         description: "Your resume has been uploaded successfully"
       });
       
-      // Reset form and refresh resumes
       setResumeTitle("");
       setResumeNotes("");
       fetchResumes();
@@ -113,7 +111,6 @@ const ResumeManager = () => {
       const url = await getResumeFileUrl(resume.file_path);
       if (!url) throw new Error("Failed to get download URL");
       
-      // Create a temporary link and trigger download
       const a = document.createElement('a');
       a.href = url;
       a.download = resume.title;
@@ -142,12 +139,10 @@ const ResumeManager = () => {
         description: "Your resume has been deleted successfully"
       });
       
-      // Close dialog and refresh resumes
       setShowDeleteDialog(false);
       setResumeToDelete(null);
       fetchResumes();
       
-      // If the deleted resume was selected, clear selection
       if (selectedResume && selectedResume.id === resumeToDelete.id) {
         setSelectedResume(null);
       }
@@ -170,10 +165,14 @@ const ResumeManager = () => {
     });
   };
 
-  const formatFileSize = (bytes) => {
-    if (bytes < 1024) return bytes + ' B';
-    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
-    else return (bytes / 1048576).toFixed(1) + ' MB';
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) {
+      return bytes + ' B';
+    } else if (bytes < 1024 * 1024) {
+      return (bytes / 1024).toFixed(2) + ' KB';
+    } else {
+      return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
+    }
   };
 
   return (
@@ -414,7 +413,6 @@ const ResumeManager = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Delete Confirmation Dialog */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
