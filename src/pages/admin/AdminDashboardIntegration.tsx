@@ -1,308 +1,442 @@
-// AdminDashboardIntegration.tsx
-import React, { useState, useEffect } from 'react';
-import { useJobs, Job } from '@/hooks/useJobs';
-import { useToast } from '@/hooks/use-toast';
+
+import React, { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+} from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form"
-import { z } from "zod"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { Calendar } from "@/components/ui/calendar"
-import { cn } from "@/lib/utils"
-import { format } from "date-fns"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { CalendarIcon } from "@radix-ui/react-icons"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { useJobs, Job } from "@/hooks/useJobs";
+import { useNotifications } from "@/hooks/useNotifications";
+import { useAuth } from "@/contexts/AuthContext";
+import { 
+  Calendar,
+  ChevronLeft, 
+  ChevronRight, 
+  MessageSquare, 
+  Plus, 
+  Trash2
+} from "lucide-react"; // Using lucide-react instead of radix-ui/react-icons
 
-const AdminDashboard = () => {
+function AdminDashboardIntegration() {
+  const [activeTab, setActiveTab] = useState("jobs");
   const { getAllJobs, createJob, updateJob, deleteJob, isLoading } = useJobs();
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [isCreating, setIsCreating] = useState(false);
+  const { createNotification } = useNotifications();
+  const { profile } = useAuth();
   const { toast } = useToast();
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [newJob, setNewJob] = useState({
+    title: "",
+    company: "",
+    description: "",
+    skills: [] as string[],
+    deadline: "",
+  });
+  const [newSkill, setNewSkill] = useState("");
+  const [newNotification, setNewNotification] = useState({
+    title: "",
+    body: "",
+    type: "announcement",
+  });
 
+  // Fetch jobs on component mount
   useEffect(() => {
-    const fetchJobs = async () => {
+    fetchJobs();
+  }, []);
+
+  const fetchJobs = async () => {
+    try {
       const { jobs: fetchedJobs } = await getAllJobs();
       setJobs(fetchedJobs);
-    };
-
-    fetchJobs();
-  }, [getAllJobs]);
-
-  const handleCreateJob = async (jobData: any) => {
-    setIsCreating(true);
-    
-    try {
-      // Extract location and other non-Job properties to avoid type errors
-      const { location, ...jobDataWithoutLocation } = jobData;
-      
-      const { success, job, error } = await createJob(jobDataWithoutLocation);
-      
-      if (success) {
-        toast({
-          title: "Job Created",
-          description: "The job posting has been created successfully.",
-        });
-        setJobs((prev) => [...prev, job]);
-        setShowCreateModal(false);
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error Creating Job",
-          description: error || "Failed to create job. Please try again.",
-        });
-      }
-    } catch (err: any) {
+    } catch (error) {
+      console.error("Error fetching jobs:", error);
       toast({
-        variant: "destructive",
         title: "Error",
-        description: err.message || "An unexpected error occurred.",
+        description: "Failed to fetch jobs",
+        variant: "destructive",
       });
-    } finally {
-      setIsCreating(false);
+    }
+  };
+
+  const handleCreateJob = async () => {
+    try {
+      if (!newJob.title || !newJob.company || !newJob.description) {
+        toast({
+          title: "Missing Fields",
+          description: "Please fill in all required fields",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await createJob(newJob);
+      setIsCreateDialogOpen(false);
+      setNewJob({
+        title: "",
+        company: "",
+        description: "",
+        skills: [],
+        deadline: "",
+      });
+      fetchJobs();
+      toast({
+        title: "Success",
+        description: "Job created successfully",
+      });
+    } catch (error) {
+      console.error("Error creating job:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create job",
+        variant: "destructive",
+      });
     }
   };
 
   const handleDeleteJob = async (jobId: string) => {
     try {
-      const { success, error } = await deleteJob(jobId);
-      if (success) {
-        toast({
-          title: "Job Deleted",
-          description: "The job posting has been deleted successfully.",
-        });
-        setJobs((prev) => prev.filter((job) => job.id !== jobId));
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error Deleting Job",
-          description: error || "Failed to delete job. Please try again.",
-        });
-      }
-    } catch (err: any) {
+      await deleteJob(jobId);
+      fetchJobs();
       toast({
-        variant: "destructive",
+        title: "Success",
+        description: "Job deleted successfully",
+      });
+    } catch (error) {
+      console.error("Error deleting job:", error);
+      toast({
         title: "Error",
-        description: err.message || "An unexpected error occurred.",
+        description: "Failed to delete job",
+        variant: "destructive",
       });
     }
   };
 
-  const jobSchema = z.object({
-    title: z.string().min(2, {
-      message: "Job title must be at least 2 characters.",
-    }),
-    company: z.string().min(2, {
-      message: "Company name must be at least 2 characters.",
-    }),
-    description: z.string().min(10, {
-      message: "Job description must be at least 10 characters.",
-    }),
-    skills: z.string().optional(),
-    deadline: z.date().optional(),
-  })
-  
-  const form = useForm<z.infer<typeof jobSchema>>({
-    resolver: zodResolver(jobSchema),
-    defaultValues: {
-      title: "",
-      company: "",
-      description: "",
-      skills: "",
-      deadline: undefined,
-    },
-  })
+  const handleAddSkill = () => {
+    if (newSkill.trim() !== "" && !newJob.skills.includes(newSkill.trim())) {
+      setNewJob({
+        ...newJob,
+        skills: [...newJob.skills, newSkill.trim()],
+      });
+      setNewSkill("");
+    }
+  };
 
-  const onSubmit = (values: z.infer<typeof jobSchema>) => {
-    handleCreateJob(values);
+  const handleRemoveSkill = (skill: string) => {
+    setNewJob({
+      ...newJob,
+      skills: newJob.skills.filter((s) => s !== skill),
+    });
+  };
+
+  const handleCreateNotification = async () => {
+    try {
+      if (!newNotification.title || !newNotification.body) {
+        toast({
+          title: "Missing Fields",
+          description: "Please fill in all required fields",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      await createNotification(
+        newNotification.title,
+        newNotification.body,
+        newNotification.type
+      );
+      setNewNotification({
+        title: "",
+        body: "",
+        type: "announcement",
+      });
+      toast({
+        title: "Success",
+        description: "Notification created successfully",
+      });
+    } catch (error) {
+      console.error("Error creating notification:", error);
+      toast({
+        title: "Error",
+        description: "Failed to create notification",
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (!profile || profile.role !== "admin") {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <p>You don't have permission to access this page.</p>
+      </div>
+    );
   }
 
   return (
-    <div className="container mx-auto py-10">
-      <h1 className="text-3xl font-semibold mb-6">Admin Dashboard</h1>
+    <div className="container mx-auto p-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="mb-4">
+          <TabsTrigger value="jobs">Manage Jobs</TabsTrigger>
+          <TabsTrigger value="notifications">
+            Send Announcements
+          </TabsTrigger>
+        </TabsList>
 
-      <div className="mb-6">
-        <Dialog open={showCreateModal} onOpenChange={setShowCreateModal}>
-          <DialogTrigger asChild>
-            <Button variant="primary">Create New Job</Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Create New Job</DialogTitle>
-              <DialogDescription>
-                Add a new job posting to the platform.
-              </DialogDescription>
-            </DialogHeader>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="title"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Job Title</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Software Engineer" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="company"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Company</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Acme Corp" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="description"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Description</FormLabel>
-                      <FormControl>
-                        <Input placeholder="Brief job description" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="skills"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Skills (comma-separated)</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., React, Node.js, SQL" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="deadline"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Deadline</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant={"outline"}
-                              className={cn(
-                                "w-[240px] pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value ? (
-                                format(field.value, "PPP")
-                              ) : (
-                                <span>Pick a date</span>
-                              )}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                          <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
-                              date < new Date()
+        <TabsContent value="jobs">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Job Listings</CardTitle>
+              <Dialog
+                open={isCreateDialogOpen}
+                onOpenChange={setIsCreateDialogOpen}
+              >
+                <DialogTrigger asChild>
+                  <Button variant="outline">
+                    <Plus className="mr-2 h-4 w-4" /> Add New Job
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Create New Job</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="title">Job Title</Label>
+                      <Input
+                        id="title"
+                        value={newJob.title}
+                        onChange={(e) =>
+                          setNewJob({ ...newJob, title: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="company">Company</Label>
+                      <Input
+                        id="company"
+                        value={newJob.company}
+                        onChange={(e) =>
+                          setNewJob({ ...newJob, company: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="description">Description</Label>
+                      <Textarea
+                        id="description"
+                        value={newJob.description}
+                        onChange={(e) =>
+                          setNewJob({
+                            ...newJob,
+                            description: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="deadline">Deadline (optional)</Label>
+                      <Input
+                        id="deadline"
+                        type="date"
+                        value={newJob.deadline}
+                        onChange={(e) =>
+                          setNewJob({ ...newJob, deadline: e.target.value })
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="skills">Skills</Label>
+                      <div className="flex space-x-2">
+                        <Input
+                          id="skills"
+                          value={newSkill}
+                          onChange={(e) => setNewSkill(e.target.value)}
+                          placeholder="Add a skill"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddSkill();
                             }
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      <FormDescription>
-                        Select a deadline for the job posting.
-                      </FormDescription>
-                      <FormMessage />
-                    </FormItem>
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={handleAddSkill}
+                        >
+                          Add
+                        </Button>
+                      </div>
+                      {newJob.skills.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {newJob.skills.map((skill) => (
+                            <div
+                              key={skill}
+                              className="bg-secondary text-secondary-foreground px-2 py-1 rounded-md flex items-center text-sm"
+                            >
+                              {skill}
+                              <button
+                                type="button"
+                                className="ml-1 text-secondary-foreground/70 hover:text-secondary-foreground"
+                                onClick={() => handleRemoveSkill(skill)}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={handleCreateJob}
+                      disabled={isLoading}
+                      className="w-full"
+                    >
+                      {isLoading ? "Creating..." : "Create Job"}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Posted</TableHead>
+                    <TableHead>Deadline</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {jobs.length === 0 ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5}
+                        className="text-center text-muted-foreground"
+                      >
+                        No jobs found. Create a new job to get started.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    jobs.map((job) => (
+                      <TableRow key={job.id}>
+                        <TableCell className="font-medium">
+                          {job.title}
+                        </TableCell>
+                        <TableCell>{job.company}</TableCell>
+                        <TableCell>
+                          {format(new Date(job.created_at), "MMM d, yyyy")}
+                        </TableCell>
+                        <TableCell>
+                          {job.deadline
+                            ? format(new Date(job.deadline), "MMM d, yyyy")
+                            : "No deadline"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteJob(job.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
                   )}
-                />
-                <DialogFooter>
-                  <Button type="submit">
-                    {isCreating ? "Creating..." : "Create Job"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
-          </DialogContent>
-        </Dialog>
-      </div>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-      <div className="overflow-x-auto">
-        <Table>
-          <TableCaption>A list of your recent job postings.</TableCaption>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[200px]">Title</TableHead>
-              <TableHead>Company</TableHead>
-              <TableHead>Description</TableHead>
-              <TableHead>Skills</TableHead>
-              <TableHead>Deadline</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {jobs.map((job) => (
-              <TableRow key={job.id}>
-                <TableCell className="font-medium">{job.title}</TableCell>
-                <TableCell>{job.company}</TableCell>
-                <TableCell>{job.description}</TableCell>
-                <TableCell>{job.skills?.join(', ') || 'N/A'}</TableCell>
-                <TableCell>{job.deadline || 'N/A'}</TableCell>
-                <TableCell className="text-right">
-                  <Button variant="destructive" size="sm" onClick={() => handleDeleteJob(job.id)}>
-                    Delete
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+        <TabsContent value="notifications">
+          <Card>
+            <CardHeader>
+              <CardTitle>Send Announcements</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="notif-title">Title</Label>
+                  <Input
+                    id="notif-title"
+                    value={newNotification.title}
+                    onChange={(e) =>
+                      setNewNotification({
+                        ...newNotification,
+                        title: e.target.value,
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="notif-body">Message</Label>
+                  <Textarea
+                    id="notif-body"
+                    value={newNotification.body}
+                    onChange={(e) =>
+                      setNewNotification({
+                        ...newNotification,
+                        body: e.target.value,
+                      })
+                    }
+                    rows={5}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="notif-type">Type</Label>
+                  <select
+                    id="notif-type"
+                    value={newNotification.type}
+                    onChange={(e) =>
+                      setNewNotification({
+                        ...newNotification,
+                        type: e.target.value,
+                      })
+                    }
+                    className="w-full p-2 border rounded-md"
+                  >
+                    <option value="announcement">Announcement</option>
+                    <option value="reminder">Reminder</option>
+                    <option value="alert">Alert</option>
+                  </select>
+                </div>
+                <Button
+                  onClick={handleCreateNotification}
+                  disabled={isLoading}
+                  className="w-full"
+                  variant="default"
+                >
+                  {isLoading ? "Sending..." : "Send to All Students"}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
-};
+}
 
-export default AdminDashboard;
+export default AdminDashboardIntegration;
