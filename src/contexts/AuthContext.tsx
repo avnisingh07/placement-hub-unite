@@ -1,20 +1,7 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Session } from '@supabase/supabase-js';
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "@/hooks/use-toast";
-
-type UserRole = 'student' | 'admin';
-
-interface UserProfile {
-  id: string;
-  name: string;
-  role: UserRole;
-  avatar_url?: string | null;
-}
-
-// Define OAuth providers that match Supabase's supported providers
-type OAuthProvider = 'google';
+import { useToast } from "@/hooks/use-toast";
+import { User, Session, UserProfile, UserRole } from "@/hooks/useAuth.types";
 
 interface AuthContextType {
   user: User | null;
@@ -28,6 +15,9 @@ interface AuthContextType {
   logout: () => Promise<void>;
   error: string | null;
 }
+
+// Define OAuth providers that match Supabase's supported providers
+type OAuthProvider = 'google';
 
 // Initialize with undefined, but assert the type for better TypeScript support
 const AuthContext = createContext<AuthContextType | undefined>(undefined);

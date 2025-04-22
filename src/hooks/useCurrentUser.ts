@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { User, UserProfile } from './useAuth';
+import { User, Session, UserProfile } from './useAuth.types';
 
 export const useCurrentUser = () => {
   const [isLoading, setIsLoading] = useState(false);

@@ -1,10 +1,10 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 
 import { usersData, channelsData, messagesData, formatTimestamp } from "./chat/chatMockData";
 import { ChatSidebar } from "./chat/ChatSidebar";
 import ChatArea from "./chat/ChatArea";
+import { supabase } from "@/integrations/supabase/client";
 
 const ChatInterface = () => {
   const { user } = useAuth();
@@ -121,6 +121,30 @@ const ChatInterface = () => {
     });
     selectChat(channelId, "channel");
   };
+
+  useEffect(() => {
+    // Subscribe to real-time updates for new messages
+    const channel = supabase
+      .channel('chat-updates')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'messages',
+        filter: `receiver_id=eq.${currentUserId}`
+      }, (payload) => {
+        // Handle new message
+        const newMessage = payload.new;
+        setMessages(prevMessages => ({
+          ...prevMessages,
+          [selectedChat]: [...(prevMessages[selectedChat] || []), newMessage]
+        }));
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentUserId, selectedChat]);
 
   return (
     <div className="h-[calc(100vh-8rem)] flex flex-col">

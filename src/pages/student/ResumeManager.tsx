@@ -1,345 +1,450 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { FileText, Upload, Download, Eye, CheckCircle, XCircle } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { FileText, Upload, MoreHorizontal, Download, Trash, Edit, Eye, Plus, FileUp } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
+import { useStorageUpload } from '@/hooks/useStorageUpload';
+import { useResumes } from '@/hooks/useResumes';
 
 const ResumeManager = () => {
-  const [activeTab, setActiveTab] = useState("upload");
-  const [resumeUploaded, setResumeUploaded] = useState(false);
-  const [resumeUrl, setResumeUrl] = useState("");
-  const [parseProgress, setParseProgress] = useState(0);
-  const [isParsing, setIsParsing] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
+  const { toast } = useToast();
+  const { user, profile } = useAuth();
+  const { uploadFile, isLoading: isUploading } = useStorageUpload();
+  const { getMyResumes, deleteResume, getResumeFileUrl, updateResumeData, isLoading: isResumesLoading } = useResumes();
   
-  // Form fields for resume information
-  const [personalInfo, setPersonalInfo] = useState({
-    name: "John Student",
-    email: "john.student@example.com",
-    phone: "(123) 456-7890",
-    location: "New York, NY"
-  });
-  
-  const [education, setEducation] = useState({
-    institution: "University of Technology",
-    degree: "Bachelor of Science in Computer Science",
-    graduationDate: "2025-05",
-    gpa: "3.8"
-  });
-  
-  const [skills, setSkills] = useState("JavaScript, React, Node.js, HTML, CSS, TypeScript, Git");
+  const [resumes, setResumes] = useState([]);
+  const [selectedResume, setSelectedResume] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [resumeTitle, setResumeTitle] = useState("");
+  const [resumeNotes, setResumeNotes] = useState("");
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [resumeToDelete, setResumeToDelete] = useState(null);
 
-  // Handle file upload
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  useEffect(() => {
+    fetchResumes();
+  }, []);
+
+  const fetchResumes = async () => {
+    setIsLoading(true);
+    try {
+      const { resumes: resumeData } = await getMyResumes();
+      setResumes(resumeData || []);
+    } catch (error) {
+      console.error("Error fetching resumes:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to load your resumes"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFileUpload = async (event) => {
+    const file = event.target.files[0];
     if (!file) return;
     
-    // Simulate file upload
-    setIsParsing(true);
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        variant: "destructive",
+        title: "File too large",
+        description: "Maximum file size is 5MB"
+      });
+      return;
+    }
     
-    // Create a temporary URL for the file
-    const url = URL.createObjectURL(file);
-    setResumeUrl(url);
+    if (!['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'].includes(file.type)) {
+      toast({
+        variant: "destructive",
+        title: "Invalid file type",
+        description: "Please upload a PDF or Word document"
+      });
+      return;
+    }
     
-    // Simulate parsing progress
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 20;
-      setParseProgress(progress);
+    try {
+      const { data, error } = await uploadFile(file, {
+        bucket: 'resumes',
+        path: user?.id
+      });
       
-      if (progress >= 100) {
-        clearInterval(interval);
-        setIsParsing(false);
-        setResumeUploaded(true);
-        setActiveTab("edit");
+      if (error) throw new Error(error);
+      
+      // Add resume record to database
+      await updateResumeData(data.id, {
+        title: resumeTitle || file.name,
+        file_path: data.path,
+        file_type: file.type,
+        file_size: file.size,
+        notes: resumeNotes
+      });
+      
+      toast({
+        title: "Resume Uploaded",
+        description: "Your resume has been uploaded successfully"
+      });
+      
+      // Reset form and refresh resumes
+      setResumeTitle("");
+      setResumeNotes("");
+      fetchResumes();
+      
+    } catch (error) {
+      console.error("Error uploading resume:", error);
+      toast({
+        variant: "destructive",
+        title: "Upload Failed",
+        description: error.message || "Failed to upload resume"
+      });
+    }
+  };
+
+  const handleDownload = async (resume) => {
+    try {
+      const url = await getResumeFileUrl(resume.file_path);
+      if (!url) throw new Error("Failed to get download URL");
+      
+      // Create a temporary link and trigger download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = resume.title;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      
+    } catch (error) {
+      console.error("Error downloading resume:", error);
+      toast({
+        variant: "destructive",
+        title: "Download Failed",
+        description: "Failed to download resume"
+      });
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!resumeToDelete) return;
+    
+    try {
+      await deleteResume(resumeToDelete.id);
+      
+      toast({
+        title: "Resume Deleted",
+        description: "Your resume has been deleted successfully"
+      });
+      
+      // Close dialog and refresh resumes
+      setShowDeleteDialog(false);
+      setResumeToDelete(null);
+      fetchResumes();
+      
+      // If the deleted resume was selected, clear selection
+      if (selectedResume && selectedResume.id === resumeToDelete.id) {
+        setSelectedResume(null);
       }
-    }, 500);
+      
+    } catch (error) {
+      console.error("Error deleting resume:", error);
+      toast({
+        variant: "destructive",
+        title: "Delete Failed",
+        description: "Failed to delete resume"
+      });
+    }
+  };
+
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const formatFileSize = (bytes) => {
+    if (bytes < 1024) return bytes + ' B';
+    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    else return (bytes / 1048576).toFixed(1) + ' MB';
   };
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Resume Manager</h1>
-        <p className="text-muted-foreground">
-          Upload, edit, and manage your resume to enhance your job opportunities
-        </p>
-      </div>
-      
-      <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="grid w-full md:w-auto grid-cols-3">
-          <TabsTrigger value="upload">Upload</TabsTrigger>
-          <TabsTrigger value="edit" disabled={!resumeUploaded}>Edit</TabsTrigger>
-          <TabsTrigger value="preview" disabled={!resumeUploaded}>Preview</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="upload" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Upload Your Resume</CardTitle>
-              <CardDescription>
-                Upload your resume to automatically extract information and improve your match score
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="border-2 border-dashed rounded-lg p-10 text-center">
-                <div className="flex flex-col items-center">
-                  <FileText size={48} className="text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium mb-2">Drag and drop your resume here</h3>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Supports PDF, DOCX, and TXT formats up to 5MB
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Resume Manager</h1>
+          <p className="text-muted-foreground">
+            Upload and manage your resumes for job applications
+          </p>
+        </div>
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button>
+              <Upload size={16} className="mr-2" />
+              Upload Resume
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Upload New Resume</DialogTitle>
+              <DialogDescription>
+                Upload a PDF or Word document of your resume
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="title">Resume Title</Label>
+                <Input 
+                  id="title" 
+                  placeholder="e.g. Software Engineer Resume" 
+                  value={resumeTitle}
+                  onChange={(e) => setResumeTitle(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="notes">Notes (Optional)</Label>
+                <Textarea 
+                  id="notes" 
+                  placeholder="Add any notes about this version of your resume"
+                  value={resumeNotes}
+                  onChange={(e) => setResumeNotes(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="resume-file">Resume File</Label>
+                <div className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center">
+                  <FileUp size={36} className="text-muted-foreground mb-2" />
+                  <p className="text-sm text-muted-foreground mb-2">
+                    Drag and drop your file here or click to browse
                   </p>
-                  <Input
-                    type="file"
+                  <Input 
+                    id="resume-file" 
+                    type="file" 
                     className="hidden"
-                    id="resume-upload"
-                    accept=".pdf,.docx,.txt"
+                    accept=".pdf,.doc,.docx"
                     onChange={handleFileUpload}
                   />
-                  <div className="flex gap-4">
-                    <Button asChild>
-                      <label htmlFor="resume-upload" className="cursor-pointer">
-                        <Upload size={16} className="mr-2" />
-                        Browse Files
-                      </label>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => document.getElementById('resume-file').click()}
+                    disabled={isUploading}
+                  >
+                    {isUploading ? "Uploading..." : "Select File"}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Accepted formats: PDF, DOC, DOCX. Maximum size: 5MB
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setResumeTitle("");
+                setResumeNotes("");
+              }}>
+                Cancel
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <Tabs defaultValue="all">
+        <TabsList>
+          <TabsTrigger value="all">All Resumes</TabsTrigger>
+          <TabsTrigger value="recent">Recently Used</TabsTrigger>
+        </TabsList>
+        <TabsContent value="all" className="space-y-4">
+          {isLoading ? (
+            <div className="flex justify-center p-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : resumes.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center p-8">
+                <FileText size={48} className="text-muted-foreground mb-4" />
+                <h3 className="text-lg font-medium mb-2">No Resumes Found</h3>
+                <p className="text-muted-foreground text-center mb-4">
+                  You haven't uploaded any resumes yet. Upload your first resume to get started.
+                </p>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus size={16} className="mr-2" />
+                      Upload Your First Resume
                     </Button>
-                    {resumeUploaded && (
-                      <Button variant="outline" onClick={() => setShowPreview(true)}>
-                        <Eye size={16} className="mr-2" />
-                        View Uploaded Resume
-                      </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    {/* Same content as the upload dialog above */}
+                  </DialogContent>
+                </Dialog>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {resumes.map((resume) => (
+                <Card key={resume.id} className={selectedResume?.id === resume.id ? "border-primary" : ""}>
+                  <CardHeader className="pb-2">
+                    <div className="flex justify-between items-start">
+                      <div className="space-y-1">
+                        <CardTitle className="text-lg">{resume.title}</CardTitle>
+                        <CardDescription>
+                          Uploaded on {formatDate(resume.created_at)}
+                        </CardDescription>
+                      </div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal size={18} />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleDownload(resume)}>
+                            <Download size={16} className="mr-2" />
+                            Download
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Edit size={16} className="mr-2" />
+                            Edit Details
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Eye size={16} className="mr-2" />
+                            Preview
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem 
+                            className="text-red-600"
+                            onClick={() => {
+                              setResumeToDelete(resume);
+                              setShowDeleteDialog(true);
+                            }}
+                          >
+                            <Trash size={16} className="mr-2" />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex items-center space-x-2 mb-2">
+                      <Badge variant="outline">
+                        {resume.file_type.split('/')[1].toUpperCase()}
+                      </Badge>
+                      <Badge variant="outline">
+                        {formatFileSize(resume.file_size)}
+                      </Badge>
+                    </div>
+                    {resume.notes && (
+                      <p className="text-sm text-muted-foreground">
+                        {resume.notes}
+                      </p>
                     )}
-                  </div>
-                </div>
-              </div>
-              
-              {isParsing && (
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm">Parsing resume...</span>
-                    <span className="text-sm">{parseProgress}%</span>
-                  </div>
-                  <Progress value={parseProgress} />
-                </div>
-              )}
-              
-              {resumeUploaded && (
-                <div className="bg-green-50 text-green-700 p-4 rounded-lg flex items-center">
-                  <CheckCircle size={20} className="mr-2" />
-                  Resume uploaded and parsed successfully! You can now edit the extracted information.
-                </div>
-              )}
-            </CardContent>
-            <CardFooter className="justify-between">
-              {resumeUploaded ? (
-                <Button onClick={() => setActiveTab("edit")}>
-                  Continue to Edit
-                </Button>
-              ) : (
-                <div className="text-sm text-muted-foreground">
-                  Upload a resume to continue
-                </div>
-              )}
-            </CardFooter>
-          </Card>
+                  </CardContent>
+                  <CardFooter className="pt-0">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="w-full"
+                      onClick={() => setSelectedResume(resume)}
+                    >
+                      {selectedResume?.id === resume.id ? "Selected" : "Select"}
+                    </Button>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          )}
         </TabsContent>
-        
-        <TabsContent value="edit" className="space-y-4">
+        <TabsContent value="recent">
           <Card>
             <CardHeader>
-              <CardTitle>Edit Resume Information</CardTitle>
+              <CardTitle>Recently Used Resumes</CardTitle>
               <CardDescription>
-                Review and edit the information extracted from your resume
+                Resumes you've recently used for job applications
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-8">
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Personal Information</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input 
-                      id="name" 
-                      value={personalInfo.name} 
-                      onChange={(e) => setPersonalInfo({...personalInfo, name: e.target.value})} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email Address</Label>
-                    <Input 
-                      id="email" 
-                      type="email" 
-                      value={personalInfo.email} 
-                      onChange={(e) => setPersonalInfo({...personalInfo, email: e.target.value})} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone">Phone Number</Label>
-                    <Input 
-                      id="phone" 
-                      value={personalInfo.phone} 
-                      onChange={(e) => setPersonalInfo({...personalInfo, phone: e.target.value})} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Location</Label>
-                    <Input 
-                      id="location" 
-                      value={personalInfo.location} 
-                      onChange={(e) => setPersonalInfo({...personalInfo, location: e.target.value})} 
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Education</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="institution">Institution</Label>
-                    <Input 
-                      id="institution" 
-                      value={education.institution} 
-                      onChange={(e) => setEducation({...education, institution: e.target.value})} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="degree">Degree</Label>
-                    <Input 
-                      id="degree" 
-                      value={education.degree} 
-                      onChange={(e) => setEducation({...education, degree: e.target.value})} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="graduation-date">Graduation Date</Label>
-                    <Input 
-                      id="graduation-date" 
-                      type="month" 
-                      value={education.graduationDate} 
-                      onChange={(e) => setEducation({...education, graduationDate: e.target.value})} 
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="gpa">GPA</Label>
-                    <Input 
-                      id="gpa" 
-                      value={education.gpa} 
-                      onChange={(e) => setEducation({...education, gpa: e.target.value})} 
-                    />
-                  </div>
-                </div>
-              </div>
-              
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium">Skills</h3>
-                <div className="space-y-2">
-                  <Label htmlFor="skills">Skills (comma separated)</Label>
-                  <Textarea 
-                    id="skills" 
-                    value={skills} 
-                    onChange={(e) => setSkills(e.target.value)} 
-                    rows={3} 
-                  />
-                </div>
-              </div>
-            </CardContent>
-            <CardFooter className="justify-between">
-              <Button variant="outline" onClick={() => setActiveTab("upload")}>
-                Back to Upload
-              </Button>
-              <Button onClick={() => setActiveTab("preview")}>
-                Save and Preview
-              </Button>
-            </CardFooter>
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="preview" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Resume Preview</CardTitle>
-              <CardDescription>
-                Preview how your resume information will appear to employers
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="border rounded-lg p-6 space-y-6">
-                <div className="space-y-2">
-                  <h2 className="text-2xl font-bold">{personalInfo.name}</h2>
-                  <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                    <span>{personalInfo.email}</span>
-                    <span>{personalInfo.phone}</span>
-                    <span>{personalInfo.location}</span>
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-lg font-medium border-b pb-1 mb-3">Education</h3>
-                  <div className="space-y-1">
-                    <p className="font-medium">{education.institution}</p>
-                    <p>{education.degree}</p>
-                    <p className="text-sm text-muted-foreground">
-                      Graduation: {new Date(education.graduationDate).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })} | GPA: {education.gpa}
-                    </p>
-                  </div>
-                </div>
-                
-                <div>
-                  <h3 className="text-lg font-medium border-b pb-1 mb-3">Skills</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {skills.split(',').map((skill, index) => (
-                      <div key={index} className="bg-purple-50 text-purple-700 px-3 py-1 rounded-full text-sm">
-                        {skill.trim()}
+            <CardContent>
+              {resumes.length > 0 ? (
+                <div className="space-y-4">
+                  {resumes
+                    .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+                    .slice(0, 3)
+                    .map((resume) => (
+                      <div key={resume.id} className="flex items-center justify-between border-b pb-4 last:border-0">
+                        <div className="flex items-center space-x-3">
+                          <div className="bg-primary/10 p-2 rounded">
+                            <FileText size={20} className="text-primary" />
+                          </div>
+                          <div>
+                            <h4 className="font-medium">{resume.title}</h4>
+                            <p className="text-sm text-muted-foreground">
+                              Last used: {formatDate(resume.updated_at)}
+                            </p>
+                          </div>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={() => handleDownload(resume)}
+                        >
+                          <Download size={16} className="mr-2" />
+                          Download
+                        </Button>
                       </div>
                     ))}
-                  </div>
                 </div>
-              </div>
-              
-              <div className="bg-green-50 text-green-700 p-4 rounded-lg flex items-center">
-                <CheckCircle size={20} className="mr-2" />
-                Your resume is complete and ready to be shared with employers!
-              </div>
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground">No recently used resumes</p>
+                </div>
+              )}
             </CardContent>
-            <CardFooter className="justify-between">
-              <Button variant="outline" onClick={() => setActiveTab("edit")}>
-                Back to Edit
-              </Button>
-              <Button>
-                <Download size={16} className="mr-2" />
-                Download Resume
-              </Button>
-            </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>
-      
-      {/* Resume Preview Dialog */}
-      <Dialog open={showPreview} onOpenChange={setShowPreview}>
-        <DialogContent className="max-w-4xl">
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle>Resume Preview</DialogTitle>
+            <DialogTitle>Delete Resume</DialogTitle>
             <DialogDescription>
-              Viewing your uploaded resume
+              Are you sure you want to delete this resume? This action cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <div className="aspect-[8.5/11] bg-white border rounded-md overflow-hidden">
-            {resumeUrl && (
-              <iframe 
-                src={resumeUrl} 
-                className="w-full h-full" 
-                title="Resume Preview"
-              />
+          <div className="py-4">
+            {resumeToDelete && (
+              <div className="flex items-center space-x-3 border p-3 rounded-lg">
+                <div className="bg-red-100 p-2 rounded">
+                  <FileText size={20} className="text-red-600" />
+                </div>
+                <div>
+                  <h4 className="font-medium">{resumeToDelete.title}</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Uploaded on {formatDate(resumeToDelete.created_at)}
+                  </p>
+                </div>
+              </div>
             )}
           </div>
           <DialogFooter>
-            <Button onClick={() => setShowPreview(false)}>Close</Button>
+            <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete}>
+              Delete Resume
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

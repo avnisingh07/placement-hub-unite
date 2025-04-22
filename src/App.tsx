@@ -19,6 +19,7 @@ import Reminders from "./pages/Reminders";
 import ChatInterface from "./pages/ChatInterface";
 import Settings from "./pages/Settings";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRoute from "./components/AdminRoute";
 
 // Create a new QueryClient instance
 const queryClient = new QueryClient();
@@ -38,7 +39,7 @@ const App = () => (
             {/* Protected Dashboard Routes */}
             <Route path="/dashboard" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
               <Route index element={<StudentDashboard />} />
-              <Route path="admin" element={<AdminDashboard />} />
+              <Route path="admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
               <Route path="resume" element={<ResumeManager />} />
               <Route path="opportunities" element={<Opportunities />} />
               <Route path="notifications" element={<Notifications />} />
