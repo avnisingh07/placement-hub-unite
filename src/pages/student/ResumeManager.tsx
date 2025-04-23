@@ -30,7 +30,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Upload, FileText, Trash2, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { Resume, useResumes } from "@/hooks/useResumes";
+import { Resume, useResumes } from "@/hooks/resumes/useResumes";
 import { format } from "date-fns";
 
 const ResumeManager: React.FC = () => {

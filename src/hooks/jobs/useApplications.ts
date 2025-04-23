@@ -54,17 +54,23 @@ export const useApplications = () => {
     setError(null);
     
     try {
+      // Fix the join relationship by specifying the correct foreign key
       const { data: applications, error: applicationsError } = await supabase
         .from('applications')
-        .select('*, job:jobs(*)')
+        .select(`
+          *,
+          job:jobs(*)
+        `)
         .order('created_at', { ascending: false });
       
       if (applicationsError) throw applicationsError;
       
+      // Type assertion with proper transformation
       const typedApplications = applications.map(app => ({
         ...app,
         opportunity_id: app.opportunity_id,
-      })) as JobApplication[];
+        job: app.job || undefined
+      })) as unknown as JobApplication[];
       
       return { applications: typedApplications };
     } catch (err: any) {
