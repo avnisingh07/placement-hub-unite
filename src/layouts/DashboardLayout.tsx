@@ -9,7 +9,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { Home, FileText, MessageSquare, Bell, Calendar, Settings, Menu, X, LogOut, User, Building, Search } from "lucide-react";
 
 const DashboardLayout = () => {
-  const { user, profile, logout } = useAuth();
+  const { user, profile, logout, isLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
@@ -23,8 +23,15 @@ const DashboardLayout = () => {
     }
   }, [isMobile]);
 
-  const handleLogout = () => {
-    logout();
+  // Redirect to the correct dashboard based on role if on the root dashboard path
+  useEffect(() => {
+    if (location.pathname === '/dashboard' && profile?.role === 'admin') {
+      navigate('/dashboard/admin');
+    }
+  }, [location.pathname, profile, navigate]);
+
+  const handleLogout = async () => {
+    await logout();
     navigate("/login");
   };
 
@@ -83,6 +90,17 @@ const DashboardLayout = () => {
   const filteredNavItems = navItems.filter(
     item => profile && item.roles.includes(profile.role)
   );
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">

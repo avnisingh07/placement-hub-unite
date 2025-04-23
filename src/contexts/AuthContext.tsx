@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -35,10 +34,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     // First set up the auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
+        console.log("Auth state changed:", event, currentSession?.user?.id);
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         
         if (currentSession?.user) {
+          // Use setTimeout to prevent deadlocks with Supabase Auth
           setTimeout(() => {
             fetchUserProfile(currentSession.user.id);
           }, 0);
@@ -50,13 +51,15 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Then check for an existing session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      console.log("Retrieved session:", currentSession?.user?.id);
       setSession(currentSession);
       setUser(currentSession?.user ?? null);
       
       if (currentSession?.user) {
         fetchUserProfile(currentSession.user.id);
+      } else {
+        setIsLoading(false);
       }
-      setIsLoading(false);
     });
 
     return () => subscription.unsubscribe();
@@ -64,6 +67,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      console.log("Fetching profile for user:", userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('id, name, role, avatar_url')
@@ -72,14 +76,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
       if (error) {
         console.error('Error fetching user profile:', error);
+        setIsLoading(false);
         return;
       }
 
       if (data) {
+        console.log("Profile retrieved:", data.role);
         setProfile(data as UserProfile);
       }
+      setIsLoading(false);
     } catch (error) {
       console.error('Error fetching user profile:', error);
+      setIsLoading(false);
     }
   };
 
@@ -94,11 +102,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       });
       
       if (error) throw error;
+      // Don't set isLoading to false here - the auth change listener will handle it
     } catch (err: any) {
       setError(err.message || 'An error occurred during login');
-      throw err;
-    } finally {
       setIsLoading(false);
+      throw err;
     }
   };
 
@@ -149,6 +157,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const logout = async () => {
     try {
+      setIsLoading(true);
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       
@@ -161,6 +170,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         description: err.message,
         variant: "destructive"
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 

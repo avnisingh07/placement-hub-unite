@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { FcGoogle } from "react-icons/fc";
 
 const LoginPage = () => {
-  const { login, signInWithProvider } = useAuth();
+  const { login, signInWithProvider, isAuthenticated, profile, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   
@@ -19,6 +18,16 @@ const LoginPage = () => {
   const [userRole, setUserRole] = useState<"student" | "admin">("student");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    if (isAuthenticated && profile) {
+      if (profile.role === 'admin') {
+        navigate("/dashboard/admin");
+      } else {
+        navigate("/dashboard");
+      }
+    }
+  }, [isAuthenticated, profile, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,14 +48,12 @@ const LoginPage = () => {
         title: "Success",
         description: "You have successfully logged in"
       });
-      navigate("/dashboard");
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Login Failed",
         description: error instanceof Error ? error.message : "An error occurred"
       });
-    } finally {
       setIsLoading(false);
     }
   };
@@ -55,7 +62,6 @@ const LoginPage = () => {
     try {
       setIsLoading(true);
       await signInWithProvider(provider);
-      // Note: The redirect happens in the AuthContext, so no need to navigate here
     } catch (error) {
       toast({
         variant: "destructive",
@@ -65,6 +71,21 @@ const LoginPage = () => {
       setIsLoading(false);
     }
   };
+
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-white p-4">
+        <div className="flex flex-col items-center">
+          <div className="w-16 h-16 border-4 border-purple-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="mt-4 text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAuthenticated) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-white p-4">

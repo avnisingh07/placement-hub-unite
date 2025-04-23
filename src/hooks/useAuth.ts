@@ -8,3 +8,6 @@ export { useProviderAuth } from './useProviderAuth';
 export { useLogout } from './useLogout';
 export { useCurrentUser } from './useCurrentUser';
 export { useUpdatePassword } from './useUpdatePassword';
+
+// Export useAuth from context for direct access
+export { useAuth } from '@/contexts/AuthContext';
