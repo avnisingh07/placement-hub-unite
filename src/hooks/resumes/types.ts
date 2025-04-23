@@ -8,6 +8,6 @@ export interface Resume {
   file_size: number;
   created_at: string;
   updated_at: string;
-  parsed_data: Record<string, any> | null;
-  form_data: Record<string, any> | null;
+  parsed_data?: Record<string, any> | null;
+  form_data?: Record<string, any> | null;
 }
