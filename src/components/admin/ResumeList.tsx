@@ -49,12 +49,11 @@ export const ResumeList = ({ resumes, isLoading }: ResumeListProps) => {
 
   const getPreviewUrl = async (resume: Resume): Promise<string | null> => {
     try {
-      const { data: { publicUrl }, error } = await supabase.storage
+      const { data } = await supabase.storage
         .from('resumes')
         .getPublicUrl(resume.file_path);
 
-      if (error) throw error;
-      return publicUrl;
+      return data.publicUrl;
     } catch (error) {
       console.error('Error getting preview URL:', error);
       return null;
